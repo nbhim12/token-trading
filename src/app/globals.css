@@ -211,6 +211,17 @@ body {
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 /* Utility classes for animations */
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
