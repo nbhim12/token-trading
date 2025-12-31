@@ -1,4 +1,4 @@
-import { createSlice, createEntityAdapter, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createEntityAdapter, PayloadAction, createSelector } from "@reduxjs/toolkit";
 import type { Token, PriceUpdate, TokenStatus } from "@/lib/types";
 import type { RootState } from "@/store";
 
@@ -105,19 +105,29 @@ export const {
   selectTotal: selectTokenCount,
 } = tokensAdapter.getSelectors<RootState>((state) => state.tokens);
 
-// Custom selectors
+// Custom selectors - memoized to prevent unnecessary re-renders
 export const selectActiveTab = (state: RootState) => state.tokens.activeTab;
 export const selectIsConnected = (state: RootState) => state.tokens.isConnected;
 export const selectLastUpdate = (state: RootState) => state.tokens.lastUpdate;
 
-export const selectTokensByStatus = (state: RootState, status: TokenStatus) =>
-  selectAllTokens(state).filter((token) => token.status === status);
+// Memoized selectors for filtered tokens by status
+export const selectNewTokens = createSelector(
+  [selectAllTokens],
+  (tokens) => tokens.filter((token) => token.status === "new")
+);
 
-export const selectNewTokens = (state: RootState) =>
-  selectTokensByStatus(state, "new");
+export const selectFinalStretchTokens = createSelector(
+  [selectAllTokens],
+  (tokens) => tokens.filter((token) => token.status === "finalStretch")
+);
 
-export const selectFinalStretchTokens = (state: RootState) =>
-  selectTokensByStatus(state, "finalStretch");
+export const selectMigratedTokens = createSelector(
+  [selectAllTokens],
+  (tokens) => tokens.filter((token) => token.status === "migrated")
+);
 
-export const selectMigratedTokens = (state: RootState) =>
-  selectTokensByStatus(state, "migrated");
+// Generic memoized selector factory for status filtering
+export const selectTokensByStatus = createSelector(
+  [selectAllTokens, (_state: RootState, status: TokenStatus) => status],
+  (tokens, status) => tokens.filter((token) => token.status === status)
+);
