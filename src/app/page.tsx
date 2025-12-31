@@ -2,50 +2,79 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { RealtimeTokenTable } from "@/components/organisms/RealtimeTokenTable";
-import { ErrorBoundary } from "@/components/organisms/ErrorBoundary";
+import { ErrorBoundaryEnhanced } from "@/components/organisms/ErrorBoundaryEnhanced";
+import { LoadingState } from "@/components/organisms/LoadingState";
+import { SkeletonPage } from "@/components/atoms/SkeletonTable";
+import { Spinner } from "@/components/atoms/Shimmer";
 import { generateAllMockData } from "@/services/mockData";
 import { useWebSocketMock } from "@/hooks/useWebSocket";
+import { useProgressiveLoad, useLoadingState } from "@/hooks/useProgressiveLoad";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { setTokens, selectAllTokens, selectIsConnected } from "@/features/tokens";
 import { Badge } from "@/components/atoms/Badge";
+import type { Token } from "@/lib/types";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
   const allTokens = useAppSelector(selectAllTokens);
   const isConnected = useAppSelector(selectIsConnected);
   
-  const [isLoading, setIsLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<Error | null>(null);
 
-  // Initialize mock data
+  // Progressive loading for initial data
+  const {
+    data: loadedTokens,
+    isLoading,
+    isLoadingMore,
+    progress,
+    reload,
+  } = useProgressiveLoad<Token>({
+    fetchFn: async () => {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const mockData = generateAllMockData(15);
+      return [...mockData.newPairs, ...mockData.finalStretch, ...mockData.migrated];
+    },
+    batchSize: 10,
+    batchDelay: 100,
+    autoStart: true,
+  });
+
+  // Refresh loading state with minimum display time
+  const { isLoading: isRefreshing, startLoading, stopLoading } = useLoadingState(400);
+
+  // Sync loaded tokens to Redux
   useEffect(() => {
-    const data = generateAllMockData(15);
-    dispatch(setTokens([...data.newPairs, ...data.finalStretch, ...data.migrated]));
-    
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [dispatch]);
+    if (loadedTokens.length > 0) {
+      dispatch(setTokens(loadedTokens));
+    }
+  }, [loadedTokens, dispatch]);
 
   // WebSocket mock for real-time updates
   const { reconnect } = useWebSocketMock({
     tokens: allTokens,
-    enabled: !isLoading,
+    enabled: !isLoading && allTokens.length > 0,
     interval: 2000,
   });
 
   // Handlers
   const handleRefresh = useCallback(() => {
-    setIsLoading(true);
+    startLoading();
+    setError(null);
+    
+    // Simulate refresh with potential error
     setTimeout(() => {
-      const newData = generateAllMockData(15);
-      dispatch(setTokens([...newData.newPairs, ...newData.finalStretch, ...newData.migrated]));
-      setIsLoading(false);
-    }, 500);
-  }, [dispatch]);
+      try {
+        const newData = generateAllMockData(15);
+        dispatch(setTokens([...newData.newPairs, ...newData.finalStretch, ...newData.migrated]));
+        stopLoading();
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Failed to refresh"));
+        stopLoading();
+      }
+    }, 600);
+  }, [dispatch, startLoading, stopLoading]);
 
   const handleBuy = useCallback((tokenId: string) => {
     console.log("Buy token:", tokenId);
@@ -68,6 +97,11 @@ export default function HomePage() {
     console.log("View details:", tokenId);
     // TODO: Implement details modal
   }, []);
+
+  // Show full page skeleton during initial load
+  if (isLoading && loadedTokens.length === 0) {
+    return <SkeletonPage />;
+  }
 
   return (
     <main className="min-h-screen bg-bg-primary flex flex-col">
@@ -96,6 +130,16 @@ export default function HomePage() {
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* Loading/refresh indicator */}
+            {(isLoadingMore || isRefreshing) && (
+              <div className="flex items-center gap-2 text-text-secondary">
+                <Spinner size="sm" className="text-accent-primary" />
+                <span className="text-xs hidden sm:inline">
+                  {isRefreshing ? "Refreshing..." : `Loading ${progress}%`}
+                </span>
+              </div>
+            )}
+            
             {/* Connection status */}
             <Badge
               variant={isConnected ? "success" : "danger"}
@@ -108,19 +152,38 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* Progress bar for loading more */}
+      {isLoadingMore && (
+        <div className="h-0.5 bg-bg-tertiary">
+          <div
+            className="h-full bg-accent-primary transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex-1 overflow-hidden">
-        <ErrorBoundary onReset={handleRefresh}>
-          <RealtimeTokenTable
-            isLoading={isLoading}
-            onBuy={handleBuy}
-            onFavorite={handleFavorite}
-            onViewDetails={handleViewDetails}
-            onRefresh={handleRefresh}
-            onReconnect={reconnect}
-            favoriteIds={favoriteIds}
-          />
-        </ErrorBoundary>
+        <ErrorBoundaryEnhanced onError={(err) => setError(err)} resetKey={allTokens.length}>
+          <LoadingState
+            isLoading={false}
+            error={error}
+            onRetry={() => {
+              setError(null);
+              reload();
+            }}
+          >
+            <RealtimeTokenTable
+              isLoading={isRefreshing}
+              onBuy={handleBuy}
+              onFavorite={handleFavorite}
+              onViewDetails={handleViewDetails}
+              onRefresh={handleRefresh}
+              onReconnect={reconnect}
+              favoriteIds={favoriteIds}
+            />
+          </LoadingState>
+        </ErrorBoundaryEnhanced>
       </div>
 
       {/* Footer */}
