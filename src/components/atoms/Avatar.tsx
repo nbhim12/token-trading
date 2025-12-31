@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState, useCallback } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface AvatarProps {
@@ -13,10 +12,10 @@ interface AvatarProps {
 }
 
 const sizeMap = {
-  sm: { container: "h-6 w-6", text: "text-xs" },
-  md: { container: "h-8 w-8", text: "text-sm" },
-  lg: { container: "h-10 w-10", text: "text-base" },
-  xl: { container: "h-12 w-12", text: "text-lg" },
+  sm: { container: "h-6 w-6", text: "text-xs", pixels: 24 },
+  md: { container: "h-8 w-8", text: "text-sm", pixels: 32 },
+  lg: { container: "h-10 w-10", text: "text-base", pixels: 40 },
+  xl: { container: "h-12 w-12", text: "text-lg", pixels: 48 },
 };
 
 /**
@@ -82,13 +81,13 @@ export const Avatar = memo(function Avatar({
         className
       )}
     >
-      <Image
+      {/* Using img tag for external placeholder images (SVG format) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt}
-        fill
-        className="object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
         onError={handleError}
-        sizes={`(max-width: 768px) ${sizeMap[size].container}, ${sizeMap[size].container}`}
       />
     </div>
   );
