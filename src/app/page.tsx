@@ -1,78 +1,142 @@
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+import { TokenTable } from "@/components/organisms/TokenTable";
+import { ErrorBoundary } from "@/components/organisms/ErrorBoundary";
+import { generateAllMockData } from "@/services/mockData";
+import { useWebSocketMock } from "@/hooks/useWebSocket";
+import { useAppDispatch } from "@/store";
+import { setTokens } from "@/features/tokens";
+import { Badge } from "@/components/atoms/Badge";
+import type { Token } from "@/lib/types";
+
 export default function HomePage() {
+  const dispatch = useAppDispatch();
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [mockData, setMockData] = useState<{
+    newPairs: Token[];
+    finalStretch: Token[];
+    migrated: Token[];
+  }>({ newPairs: [], finalStretch: [], migrated: [] });
+
+  // Initialize mock data
+  useEffect(() => {
+    const data = generateAllMockData(15);
+    setMockData(data);
+    dispatch(setTokens([...data.newPairs, ...data.finalStretch, ...data.migrated]));
+    
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [dispatch]);
+
+  // WebSocket mock for real-time updates
+  const { isConnected } = useWebSocketMock({
+    tokens: [...mockData.newPairs, ...mockData.finalStretch, ...mockData.migrated],
+    enabled: !isLoading,
+    interval: 2000,
+  });
+
+  // Handlers
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      const newData = generateAllMockData(15);
+      setMockData(newData);
+      dispatch(setTokens([...newData.newPairs, ...newData.finalStretch, ...newData.migrated]));
+      setIsLoading(false);
+    }, 500);
+  }, [dispatch]);
+
+  const handleBuy = useCallback((tokenId: string) => {
+    console.log("Buy token:", tokenId);
+    // TODO: Implement buy modal
+  }, []);
+
+  const handleFavorite = useCallback((tokenId: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tokenId)) {
+        next.delete(tokenId);
+      } else {
+        next.add(tokenId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleViewDetails = useCallback((tokenId: string) => {
+    console.log("View details:", tokenId);
+    // TODO: Implement details modal
+  }, []);
+
   return (
-    <main className="min-h-screen bg-bg-primary">
-      {/* Header placeholder */}
+    <main className="min-h-screen bg-bg-primary flex flex-col">
+      {/* Header */}
       <header className="sticky top-0 z-50 h-14 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-xl">
-        <div className="flex h-full items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-accent-primary" />
-            <span className="text-lg font-semibold text-text-primary">
+        <div className="flex h-full items-center justify-between px-4 max-w-[1920px] mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center">
+              <span className="text-white font-bold text-sm">A</span>
+            </div>
+            <span className="text-lg font-semibold text-text-primary hidden sm:block">
               Axiom Trade
             </span>
           </div>
-          <nav className="hidden items-center gap-6 md:flex">
-            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors">
+          
+          <nav className="flex items-center gap-6">
+            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block">
               Discover
             </span>
             <span className="text-sm text-accent-primary font-medium cursor-pointer">
               Pulse
             </span>
-            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors">
+            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block">
               Trackers
             </span>
           </nav>
+
+          <div className="flex items-center gap-3">
+            {/* Connection status */}
+            <Badge
+              variant={isConnected ? "success" : "danger"}
+              size="sm"
+              withDot
+            >
+              {isConnected ? "Live" : "Offline"}
+            </Badge>
+          </div>
         </div>
       </header>
 
-      {/* Main content area - Token tables will go here */}
-      <div className="container mx-auto p-4">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* New Pairs Column */}
-          <div className="rounded-xl border border-border-primary bg-bg-secondary p-4">
-            <h2 className="mb-4 text-sm font-medium text-text-primary">
-              🆕 New Pairs
-            </h2>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-shimmer rounded-lg"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Final Stretch Column */}
-          <div className="rounded-xl border border-border-primary bg-bg-secondary p-4">
-            <h2 className="mb-4 text-sm font-medium text-text-primary">
-              🏁 Final Stretch
-            </h2>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-shimmer rounded-lg"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Migrated Column */}
-          <div className="rounded-xl border border-border-primary bg-bg-secondary p-4">
-            <h2 className="mb-4 text-sm font-medium text-text-primary">
-              ✅ Migrated
-            </h2>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-shimmer rounded-lg"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Main content */}
+      <div className="flex-1 overflow-hidden">
+        <ErrorBoundary onReset={handleRefresh}>
+          <TokenTable
+            newPairs={mockData.newPairs}
+            finalStretch={mockData.finalStretch}
+            migrated={mockData.migrated}
+            isLoading={isLoading}
+            onBuy={handleBuy}
+            onFavorite={handleFavorite}
+            onViewDetails={handleViewDetails}
+            onRefresh={handleRefresh}
+            favoriteIds={favoriteIds}
+          />
+        </ErrorBoundary>
       </div>
+
+      {/* Footer */}
+      <footer className="h-10 border-t border-border-primary bg-bg-secondary/50 flex items-center justify-center">
+        <p className="text-xs text-text-tertiary">
+          Token Trading Demo • Built with Next.js 14 + Redux Toolkit
+        </p>
+      </footer>
     </main>
   );
 }
