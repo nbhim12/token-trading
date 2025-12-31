@@ -1,30 +1,25 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { TokenTable } from "@/components/organisms/TokenTable";
+import { RealtimeTokenTable } from "@/components/organisms/RealtimeTokenTable";
 import { ErrorBoundary } from "@/components/organisms/ErrorBoundary";
 import { generateAllMockData } from "@/services/mockData";
 import { useWebSocketMock } from "@/hooks/useWebSocket";
-import { useAppDispatch } from "@/store";
-import { setTokens } from "@/features/tokens";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { setTokens, selectAllTokens, selectIsConnected } from "@/features/tokens";
 import { Badge } from "@/components/atoms/Badge";
-import type { Token } from "@/lib/types";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
+  const allTokens = useAppSelector(selectAllTokens);
+  const isConnected = useAppSelector(selectIsConnected);
   
   const [isLoading, setIsLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [mockData, setMockData] = useState<{
-    newPairs: Token[];
-    finalStretch: Token[];
-    migrated: Token[];
-  }>({ newPairs: [], finalStretch: [], migrated: [] });
 
   // Initialize mock data
   useEffect(() => {
     const data = generateAllMockData(15);
-    setMockData(data);
     dispatch(setTokens([...data.newPairs, ...data.finalStretch, ...data.migrated]));
     
     // Simulate loading delay
@@ -36,8 +31,8 @@ export default function HomePage() {
   }, [dispatch]);
 
   // WebSocket mock for real-time updates
-  const { isConnected } = useWebSocketMock({
-    tokens: [...mockData.newPairs, ...mockData.finalStretch, ...mockData.migrated],
+  const { reconnect } = useWebSocketMock({
+    tokens: allTokens,
     enabled: !isLoading,
     interval: 2000,
   });
@@ -47,7 +42,6 @@ export default function HomePage() {
     setIsLoading(true);
     setTimeout(() => {
       const newData = generateAllMockData(15);
-      setMockData(newData);
       dispatch(setTokens([...newData.newPairs, ...newData.finalStretch, ...newData.migrated]));
       setIsLoading(false);
     }, 500);
@@ -117,15 +111,13 @@ export default function HomePage() {
       {/* Main content */}
       <div className="flex-1 overflow-hidden">
         <ErrorBoundary onReset={handleRefresh}>
-          <TokenTable
-            newPairs={mockData.newPairs}
-            finalStretch={mockData.finalStretch}
-            migrated={mockData.migrated}
+          <RealtimeTokenTable
             isLoading={isLoading}
             onBuy={handleBuy}
             onFavorite={handleFavorite}
             onViewDetails={handleViewDetails}
             onRefresh={handleRefresh}
+            onReconnect={reconnect}
             favoriteIds={favoriteIds}
           />
         </ErrorBoundary>
@@ -134,7 +126,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="h-10 border-t border-border-primary bg-bg-secondary/50 flex items-center justify-center">
         <p className="text-xs text-text-tertiary">
-          Token Trading Demo • Built with Next.js 14 + Redux Toolkit
+          Token Trading Demo • Built with Next.js 16 + Redux Toolkit
         </p>
       </footer>
     </main>
