@@ -9,13 +9,13 @@ import { Spinner } from "@/components/atoms/Shimmer";
 import { SkipLink, LiveRegion } from "@/components/atoms/Accessibility";
 import { generateAllMockData } from "@/services/mockData";
 import { useWebSocketMock } from "@/hooks/useWebSocket";
-import { useProgressiveLoad, useLoadingState } from "@/hooks/useProgressiveLoad";
+import { useLoadingState } from "@/hooks/useProgressiveLoad";
 import { useLoadingAnnouncement } from "@/hooks/useAccessibility";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { setTokens, selectAllTokens, selectIsConnected } from "@/features/tokens";
 import { Badge } from "@/components/atoms/Badge";
-import type { Token } from "@/lib/types";
 import { TokenModal } from "@/components/organisms/TokenModal";
+import type { Token } from "@/lib/types";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
@@ -26,25 +26,26 @@ export default function HomePage() {
   const [error, setError] = useState<Error | null>(null);
   const [modalToken, setModalToken] = useState<Token | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Progressive loading for initial data
-  const {
-    data: loadedTokens,
-    isLoading,
-    isLoadingMore,
-    progress,
-    reload,
-  } = useProgressiveLoad<Token>({
-    fetchFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const mockData = generateAllMockData(15);
-      return [...mockData.newPairs, ...mockData.finalStretch, ...mockData.migrated];
-    },
-    batchSize: 10,
-    batchDelay: 100,
-    autoStart: true,
-  });
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Small delay for UX
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const mockData = generateAllMockData(15);
+        const tokens = [...mockData.newPairs, ...mockData.finalStretch, ...mockData.migrated];
+        dispatch(setTokens(tokens));
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Failed to load"));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [dispatch]);
 
   // Refresh loading state with minimum display time
   const { isLoading: isRefreshing, startLoading, stopLoading } = useLoadingState(400);
@@ -52,13 +53,6 @@ export default function HomePage() {
   // Screen reader announcements for loading states
   useLoadingAnnouncement(isLoading, "Loading tokens");
   useLoadingAnnouncement(isRefreshing, "Refreshing data");
-
-  // Sync loaded tokens to Redux
-  useEffect(() => {
-    if (loadedTokens.length > 0) {
-      dispatch(setTokens(loadedTokens));
-    }
-  }, [loadedTokens, dispatch]);
 
   // WebSocket mock for real-time updates
   const { reconnect } = useWebSocketMock({
@@ -109,7 +103,7 @@ export default function HomePage() {
   }, [allTokens]);
 
   // Show full page skeleton during initial load
-  if (isLoading && loadedTokens.length === 0) {
+  if (isLoading) {
     return <SkeletonPage />;
   }
 
@@ -150,12 +144,10 @@ export default function HomePage() {
 
             <div className="flex items-center gap-3">
               {/* Loading/refresh indicator */}
-              {(isLoadingMore || isRefreshing) && (
+              {isRefreshing && (
                 <div className="flex items-center gap-2 text-text-secondary" role="status" aria-live="polite">
                   <Spinner size="sm" className="text-accent-primary" />
-                  <span className="text-xs hidden sm:inline">
-                    {isRefreshing ? "Refreshing..." : `Loading ${progress}%`}
-                  </span>
+                  <span className="text-xs hidden sm:inline">Refreshing...</span>
                 </div>
               )}
               
@@ -171,55 +163,45 @@ export default function HomePage() {
           </div>
         </header>
 
-      {/* Progress bar for loading more */}
-      {isLoadingMore && (
-        <div className="h-0.5 bg-bg-tertiary">
-          <div
-            className="h-full bg-accent-primary transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+        {/* Main content */}
+        <div id="main-content" className="flex-1 overflow-hidden" tabIndex={-1}>
+          <ErrorBoundaryEnhanced onError={(err) => setError(err)} resetKey={allTokens.length}>
+            <LoadingState
+              isLoading={false}
+              error={error}
+              onRetry={() => {
+                setError(null);
+                handleRefresh();
+              }}
+            >
+              <RealtimeTokenTable
+                isLoading={isRefreshing}
+                onBuy={handleBuy}
+                onFavorite={handleFavorite}
+                onViewDetails={handleViewDetails}
+                onRefresh={handleRefresh}
+                onReconnect={reconnect}
+                favoriteIds={favoriteIds}
+              />
+              <TokenModal
+                token={modalToken}
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onBuy={handleBuy}
+                isFavorite={modalToken ? favoriteIds.has(modalToken.id) : false}
+                onToggleFavorite={handleFavorite}
+              />
+            </LoadingState>
+          </ErrorBoundaryEnhanced>
         </div>
-      )}
 
-      {/* Main content */}
-      <div id="main-content" className="flex-1 overflow-hidden" tabIndex={-1}>
-        <ErrorBoundaryEnhanced onError={(err) => setError(err)} resetKey={allTokens.length}>
-          <LoadingState
-            isLoading={false}
-            error={error}
-            onRetry={() => {
-              setError(null);
-              reload();
-            }}
-          >
-            <RealtimeTokenTable
-              isLoading={isRefreshing}
-              onBuy={handleBuy}
-              onFavorite={handleFavorite}
-              onViewDetails={handleViewDetails}
-              onRefresh={handleRefresh}
-              onReconnect={reconnect}
-              favoriteIds={favoriteIds}
-            />
-            <TokenModal
-              token={modalToken}
-              isOpen={modalOpen}
-              onClose={() => setModalOpen(false)}
-              onBuy={handleBuy}
-              isFavorite={modalToken ? favoriteIds.has(modalToken.id) : false}
-              onToggleFavorite={handleFavorite}
-            />
-          </LoadingState>
-        </ErrorBoundaryEnhanced>
-      </div>
-
-      {/* Footer */}
-      <footer className="h-10 border-t border-border-primary bg-bg-secondary/50 flex items-center justify-center">
-        <p className="text-xs text-text-tertiary">
-          Token Trading Demo • Built with Next.js 16 + Redux Toolkit
-        </p>
-      </footer>
-    </main>
+        {/* Footer */}
+        <footer className="h-10 border-t border-border-primary bg-bg-secondary/50 flex items-center justify-center">
+          <p className="text-xs text-text-tertiary">
+            Token Trading Demo • Built with Next.js 16 + Redux Toolkit
+          </p>
+        </footer>
+      </main>
     </>
   );
 }
