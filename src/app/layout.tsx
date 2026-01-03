@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Token Trading | Axiom Trade Clone",
+  title: "Axiom Trade",
   description:
     "A pixel-perfect replica of Axiom Trade's token discovery table with real-time updates",
   keywords: ["trading", "tokens", "crypto", "solana", "defi"],
