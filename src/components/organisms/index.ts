@@ -6,3 +6,4 @@ export * from "./ErrorBoundaryEnhanced";
 export * from "./LoadingState";
 export * from "./RealtimeTokenColumn";
 export * from "./RealtimeTokenTable";
+export * from "./TokenModal";

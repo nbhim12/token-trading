@@ -11,3 +11,5 @@ export * from "./Icon";
 export * from "./Avatar";
 export * from "./CopyButton";
 export * from "./Tabs";
+export * from "./Modal";
+export * from "./Popover";

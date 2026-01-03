@@ -6,6 +6,7 @@ import { TokenColumn } from "./TokenColumn";
 import { Tabs } from "@/components/atoms/Tabs";
 import { Button } from "@/components/atoms/Button";
 import { RefreshCw } from "@/components/atoms/Icon";
+import { ChainSelector, FilterPopover } from "@/components/molecules/FilterPopover";
 import type { Token, TokenStatus } from "@/lib/types";
 
 interface TokenTableProps {
@@ -61,9 +62,19 @@ export const TokenTable = memo(function TokenTable({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      {/* Header with refresh button */}
+      {/* Header with refresh button, chain selector, filter popover */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-primary">
-        <h1 className="text-lg font-semibold text-text-primary">Token Pulse</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold text-text-primary">Token Pulse</h1>
+          <ChainSelector selected={"eth"} onChange={() => {}} />
+          <FilterPopover
+            selected={[]}
+            options={TAB_ITEMS.map((tab) => ({ id: tab.value, label: tab.label }))}
+            onChange={() => {}}
+            label="Status"
+            multiple={false}
+          />
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"

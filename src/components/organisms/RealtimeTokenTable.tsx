@@ -6,9 +6,9 @@ import { RealtimeTokenColumn } from "./RealtimeTokenColumn";
 import { Tabs } from "@/components/atoms/Tabs";
 import { Button } from "@/components/atoms/Button";
 import { RefreshCw } from "@/components/atoms/Icon";
-import { ConnectionStatusWithAction, LastUpdateTime } from "@/components/molecules/ConnectionStatus";
 import { useRealtimeTokens } from "@/hooks/useRealtimeTokens";
 import type { TokenStatus } from "@/lib/types";
+import { ChainSelector, FilterPopover } from "@/components/molecules/FilterPopover";
 
 interface RealtimeTokenTableProps {
   isLoading?: boolean;
@@ -38,7 +38,7 @@ export const RealtimeTokenTable = memo(function RealtimeTokenTable({
   onFavorite,
   onViewDetails,
   onRefresh,
-  onReconnect,
+  onReconnect: _onReconnect,
   favoriteIds = new Set(),
 }: RealtimeTokenTableProps) {
   const [activeTab, setActiveTab] = useState<TokenStatus>("new");
@@ -60,14 +60,20 @@ export const RealtimeTokenTable = memo(function RealtimeTokenTable({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      {/* Header with refresh button and connection status */}
+      {/* Header with refresh button, chain selector, filter popover */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-primary">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-text-primary">Token Pulse</h1>
-          <LastUpdateTime />
-        </div>
         <div className="flex items-center gap-3">
-          <ConnectionStatusWithAction onReconnect={onReconnect} />
+          <h1 className="text-lg font-semibold text-text-primary">Token Pulse</h1>
+          <ChainSelector selected={"eth"} onChange={() => {}} />
+          <FilterPopover
+            selected={[]}
+            options={TAB_ITEMS.map((tab) => ({ id: tab.value, label: tab.label }))}
+            onChange={() => {}}
+            label="Status"
+            multiple={false}
+          />
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
