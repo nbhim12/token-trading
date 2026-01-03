@@ -9,3 +9,4 @@ export * from "./TokenRow";
 export * from "./RealtimePriceCell";
 export * from "./RealtimeTokenRow";
 export * from "./ConnectionStatus";
+export * from "./FilterPopover";

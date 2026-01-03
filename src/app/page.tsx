@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { setTokens, selectAllTokens, selectIsConnected } from "@/features/tokens";
 import { Badge } from "@/components/atoms/Badge";
 import type { Token } from "@/lib/types";
+import { TokenModal } from "@/components/organisms/TokenModal";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
@@ -21,6 +22,8 @@ export default function HomePage() {
   
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<Error | null>(null);
+  const [modalToken, setModalToken] = useState<Token | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Progressive loading for initial data
   const {
@@ -94,9 +97,10 @@ export default function HomePage() {
   }, []);
 
   const handleViewDetails = useCallback((tokenId: string) => {
-    console.log("View details:", tokenId);
-    // TODO: Implement details modal
-  }, []);
+    const token = allTokens.find((t) => t.id === tokenId) || null;
+    setModalToken(token);
+    setModalOpen(true);
+  }, [allTokens]);
 
   // Show full page skeleton during initial load
   if (isLoading && loadedTokens.length === 0) {
@@ -181,6 +185,14 @@ export default function HomePage() {
               onRefresh={handleRefresh}
               onReconnect={reconnect}
               favoriteIds={favoriteIds}
+            />
+            <TokenModal
+              token={modalToken}
+              isOpen={modalOpen}
+              onClose={() => setModalOpen(false)}
+              onBuy={handleBuy}
+              isFavorite={modalToken ? favoriteIds.has(modalToken.id) : false}
+              onToggleFavorite={handleFavorite}
             />
           </LoadingState>
         </ErrorBoundaryEnhanced>
