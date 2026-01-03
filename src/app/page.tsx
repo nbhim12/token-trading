@@ -6,9 +6,11 @@ import { ErrorBoundaryEnhanced } from "@/components/organisms/ErrorBoundaryEnhan
 import { LoadingState } from "@/components/organisms/LoadingState";
 import { SkeletonPage } from "@/components/atoms/SkeletonTable";
 import { Spinner } from "@/components/atoms/Shimmer";
+import { SkipLink, LiveRegion } from "@/components/atoms/Accessibility";
 import { generateAllMockData } from "@/services/mockData";
 import { useWebSocketMock } from "@/hooks/useWebSocket";
 import { useProgressiveLoad, useLoadingState } from "@/hooks/useProgressiveLoad";
+import { useLoadingAnnouncement } from "@/hooks/useAccessibility";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { setTokens, selectAllTokens, selectIsConnected } from "@/features/tokens";
 import { Badge } from "@/components/atoms/Badge";
@@ -46,6 +48,10 @@ export default function HomePage() {
 
   // Refresh loading state with minimum display time
   const { isLoading: isRefreshing, startLoading, stopLoading } = useLoadingState(400);
+
+  // Screen reader announcements for loading states
+  useLoadingAnnouncement(isLoading, "Loading tokens");
+  useLoadingAnnouncement(isRefreshing, "Refreshing data");
 
   // Sync loaded tokens to Redux
   useEffect(() => {
@@ -108,53 +114,62 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-bg-primary flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 h-14 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-xl">
-        <div className="flex h-full items-center justify-between px-4 max-w-[1920px] mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
-            </div>
-            <span className="text-lg font-semibold text-text-primary hidden sm:block">
-              Axiom Trade
-            </span>
-          </div>
-          
-          <nav className="flex items-center gap-6">
-            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block">
-              Discover
-            </span>
-            <span className="text-sm text-accent-primary font-medium cursor-pointer">
-              Pulse
-            </span>
-            <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block">
-              Trackers
-            </span>
-          </nav>
+    <>
+      {/* Skip link for keyboard accessibility */}
+      <SkipLink targetId="main-content" />
+      
+      {/* Live region for dynamic announcements */}
+      <LiveRegion>
+        {isConnected ? "Real-time updates active" : "Offline mode"}
+      </LiveRegion>
 
-          <div className="flex items-center gap-3">
-            {/* Loading/refresh indicator */}
-            {(isLoadingMore || isRefreshing) && (
-              <div className="flex items-center gap-2 text-text-secondary">
-                <Spinner size="sm" className="text-accent-primary" />
-                <span className="text-xs hidden sm:inline">
-                  {isRefreshing ? "Refreshing..." : `Loading ${progress}%`}
-                </span>
+      <main className="min-h-screen bg-bg-primary flex flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-50 h-14 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-xl">
+          <div className="flex h-full items-center justify-between px-4 max-w-[1920px] mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center hover-glow">
+                <span className="text-white font-bold text-sm">A</span>
               </div>
-            )}
+              <span className="text-lg font-semibold text-text-primary hidden sm:block">
+                Axiom Trade
+              </span>
+            </div>
             
-            {/* Connection status */}
-            <Badge
-              variant={isConnected ? "success" : "danger"}
-              size="sm"
-              withDot
-            >
-              {isConnected ? "Live" : "Offline"}
-            </Badge>
+            <nav className="flex items-center gap-6" role="navigation" aria-label="Main navigation">
+              <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block focus-ring" tabIndex={0}>
+                Discover
+              </span>
+              <span className="text-sm text-accent-primary font-medium cursor-pointer focus-ring" tabIndex={0} aria-current="page">
+                Pulse
+              </span>
+              <span className="text-sm text-text-secondary hover:text-text-primary cursor-pointer transition-colors hidden md:block focus-ring" tabIndex={0}>
+                Trackers
+              </span>
+            </nav>
+
+            <div className="flex items-center gap-3">
+              {/* Loading/refresh indicator */}
+              {(isLoadingMore || isRefreshing) && (
+                <div className="flex items-center gap-2 text-text-secondary" role="status" aria-live="polite">
+                  <Spinner size="sm" className="text-accent-primary" />
+                  <span className="text-xs hidden sm:inline">
+                    {isRefreshing ? "Refreshing..." : `Loading ${progress}%`}
+                  </span>
+                </div>
+              )}
+              
+              {/* Connection status */}
+              <Badge
+                variant={isConnected ? "success" : "danger"}
+                size="sm"
+                withDot
+              >
+                {isConnected ? "Live" : "Offline"}
+              </Badge>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Progress bar for loading more */}
       {isLoadingMore && (
@@ -167,7 +182,7 @@ export default function HomePage() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 overflow-hidden">
+      <div id="main-content" className="flex-1 overflow-hidden" tabIndex={-1}>
         <ErrorBoundaryEnhanced onError={(err) => setError(err)} resetKey={allTokens.length}>
           <LoadingState
             isLoading={false}
@@ -205,5 +220,6 @@ export default function HomePage() {
         </p>
       </footer>
     </main>
+    </>
   );
 }
